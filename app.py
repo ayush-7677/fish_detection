@@ -27,7 +27,11 @@ def load_yolo():
 @st.cache_resource
 def load_classifier():
     import sys
+    sys.path.append(os.path.join(PROJECT_ROOT, "src"))
     sys.path.append(os.path.join(PROJECT_ROOT, "src", "classification"))
+    if not os.path.exists(EFFNET_MODEL_PATH):
+        from download_models import main as download_best_model
+        download_best_model()
     from model import build_model
     
     with open(CLASSES_PATH) as f:
