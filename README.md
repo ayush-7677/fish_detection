@@ -1,6 +1,8 @@
-# ML Fish Classifier
+# ML Fish Classifier & Eco-Dashboard
 
-An AI-based system for **fish species identification, detection, counting, density estimation and spatial heat mapping** in Indian freshwater ecosystems.
+An AI-based system for **fish detection, counting, species identification, density estimation, spatial heat mapping, video tracking, GIS mapping, and water quality analysis** in Indian freshwater ecosystems.
+
+Includes an interactive **Streamlit Web App (`app.py`)**, automatic **CUDA / Apple Silicon (MPS) / CPU** device support, and CLI tools for every module.
 
 ---
 
@@ -10,8 +12,61 @@ An AI-based system for **fish species identification, detection, counting, densi
 |---|---|---|---|
 | Species Classification | EfficientNetB0 | Test Accuracy | 95.00% |
 | Fish Detection | YOLOv8n | mAP@50 | 92.3% |
+| Water Quality | XGBoost (Classifier + Regressor) | Potability & pH | Pretrained |
 | Density Estimation | Formula-based | — | fish/m² |
-| Heat Map | OpenCV | — | spatial overlay |
+| Heat Map | OpenCV Gaussian Blur | — | spatial overlay |
+| Video Tracking | YOLOv8 + ByteTrack | Unique IDs | no double counting |
+
+---
+
+## Quick Start (Streamlit Web App)
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/ayush-7677/fish_detection.git
+cd fish_detection
+```
+
+### 2. Create virtual environment & install dependencies
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+> **macOS note:** XGBoost requires OpenMP (`libomp`). If you see a `libxgboost.dylib` / `libomp` error, install it with:
+> ```bash
+> brew install libomp
+> ```
+
+### 3. Download pretrained classification weights (`best_model.pth`)
+```bash
+python src/download_models.py
+```
+*(Automatically downloads `models/best_model.pth` from Google Drive. `models/yolo_fish/weights/best.pt` and the XGBoost water quality models are already included in `models/`.)*
+
+### 4. Run the Streamlit Web App
+```bash
+streamlit run app.py
+```
+Open **[http://localhost:8501](http://localhost:8501)** in your browser.
+
+---
+
+## Web App Modes (`app.py`)
+
+| Mode | What it does |
+|---|---|
+| **Fish Detection & Counting (YOLOv8)** | Upload an image (or use `sample_fish.jpg`) to detect fish, draw bounding boxes, and view confidence stats. |
+| **Species Classification (EfficientNetB0)** | Identifies the fish species with Top-5 predictions and confidence scores. Automatically matches 31-class (`class_names_31.json`) or 73-class (`class_names.json`) checkpoints. |
+| **Density Estimation** | Estimates areal fish density (`fish/m²`) and total pond population from camera depth, FOV, and pond area. |
+| **Spatial Heat Map** | Generates a spatial density heat map overlay over the pond image. |
+| **Water Quality Analysis** | Takes Turbidity, Hardness, and TDS sliders to predict water potability and pH using XGBoost. |
+
+### Detection Settings (Sidebar Sliders)
+- **Confidence Threshold** (default `0.25`): Lower (`0.15–0.25`) to detect more fish in dense schools; raise (`0.40–0.60+`) to filter false positives.
+- **IoU / NMS Threshold** (default `0.30`): Keep low (`0.20–0.35`) for schools of fish so nearby fish aren't merged into a single box. Uses `agnostic_nms=True`.
+- **Max Detections** (default `300`, up to `500`): Maximum fish boxes allowed per image.
 
 ---
 
@@ -28,75 +83,55 @@ An AI-based system for **fish species identification, detection, counting, densi
 
 **Sources:**
 - [Kaggle - Identify the Fish](https://www.kaggle.com/code/ammarbhilwarawala/identify-the-fish/input) — 31 species
-- [AS-FishFresh Augmented Dataset (Mendeley)](https://data.mendeley.com/datasets/sdhp9bmrz5/2) — 48 Assam freshwater species
-
----
-
-## Pretrained Models
-Download from [Google Drive](https://drive.google.com/drive/folders/1M9j-u3C7IiUD4yURx-mrlKcZWbPN2lrv?usp=sharing):
-- `best_model.pth` → EfficientNetB0 classification model
-- `class_names.json` → species list
-
-Place both in `models/` folder.
+- [AS-FishFresh Augmented Dataset (Mendeley)](https://data.mendeley.com/datasets/sdhp9bmrz5/2) — 48 Assam freshwater species (merged & deduplicated via `src/merge_datasets.py`)
 
 ---
 
 ## Project Structure
 
 ```text
-ML_Fish_Classifier/
+fish_detection/
+├── app.py                          # Streamlit web dashboard (5 modes)
+├── sample_fish.jpg                 # Built-in sample image for testing
+├── requirements.txt
 ├── detection/
-│   └── data.yaml
+│   └── data.yaml                   # YOLOv8 dataset config
 ├── models/
-│   ├── best_model.pth
-│   ├── class_names.json
+│   ├── best_model.pth              # EfficientNetB0 checkpoint (via download_models.py)
+│   ├── class_names.json            # 73 species list
+│   ├── class_names_31.json         # 31 species list (auto-matched to 31-class checkpoint)
+│   ├── model_clf.json              # XGBoost potability classifier
+│   ├── model_reg.json              # XGBoost pH regressor
 │   ├── confusion_matrix.png
 │   └── yolo_fish/
+│       └── weights/best.pt         # YOLOv8n trained fish detector
 ├── src/
+│   ├── download_models.py          # Downloads best_model.pth from Google Drive
+│   ├── merge_datasets.py           # Merges Kaggle + Assam datasets
+│   ├── gis_map.py                  # Interactive Folium GIS map generator
+│   ├── integrated_report.py        # All-in-one detection + density + water quality CLI
 │   ├── classification/
 │   │   ├── dataset.py
 │   │   ├── model.py
 │   │   ├── train.py
 │   │   ├── predict.py
 │   │   └── evaluate.py
-│   ├── detection/
-│   │   ├── train_yolo.py
-│   │   ├── predict_yolo.py
-│   │   ├── count_fish.py
-│   │   ├── density.py
-│   │   └── heatmap.py
-│   └── merge_datasets.py
-├── requirements.txt
-├── CONTRIBUTING.md
-└── README.md
-```
-
-## Setup
-
-```bash
-conda create -n fish_classifier python=3.10
-conda activate fish_classifier
-```
-
-Install PyTorch based on your GPU:
-```bash
-# NVIDIA RTX 50xx (Blackwell/CUDA 12.8)
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-
-# NVIDIA RTX 30xx/40xx (CUDA 12.1)
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# CPU only
-pip install torch torchvision torchaudio
-```
-
-```bash
-pip install -r requirements.txt
+│   └── detection/
+│       ├── train_yolo.py
+│       ├── predict_yolo.py
+│       ├── count_fish.py
+│       ├── density.py
+│       ├── heatmap.py
+│       └── track_fish.py           # ByteTrack video tracking
+└── water_quality/
+    └── main.py                     # FastAPI water quality service
 ```
 
 ---
 
-## Usage
+## CLI Usage
+
+All scripts automatically detect **CUDA → Apple Silicon (`mps`) → CPU** and use relative paths.
 
 ### 1. Species Classification
 ```bash
@@ -126,86 +161,11 @@ python src/detection/density.py --image "path/to/pond.jpg" --depth 2 --fov 90 --
 python src/detection/heatmap.py --image "path/to/pond.jpg"
 ```
 
-### 6. Train from Scratch
-```bash
-# Classification
-python src/classification/train.py
-
-# Detection
-python src/detection/train_yolo.py
-```
-
----
-
-## Pipeline Flow
-Input Image/Video
-↓
-YOLOv8 → Detect fish + draw boxes + count
-↓
-EfficientNetB0 → Identify species per fish
-↓
-Density Module → fish/m² + estimated pond population
-↓
-Heat Map → spatial distribution overlay
-
-## Sample Output
-
-**Species Count:**
-Glass Perchlet : 9 → 0.75 fish/m²
-Gold Fish : 4 → 0.33 fish/m²
-Freshwater Eel : 4 → 0.33 fish/m²
-─────────────────────────────────────
-TOTAL : 27
-
-**Density Report:**
-Camera Coverage : 4.00m × 3.00m = 12 m²
-Areal Density : 2.25 fish/m²
-Est. Total Fish : 4,500 in pond
-
----
-
-### Roadmap
-- [x] Species classification (73 species)
-- [x] Fish detection (YOLOv8)
-- [x] Species identification per detection
-- [x] Unknown species handling
-- [x] Density estimation
-- [x] Spatial heat map
-- [x] Fish tracking (ByteTrack)
-- [x] Water quality integration
-- [x] Integrated report
-- [x] GIS mapping
-- [ ] REST API (FastAPI)
-- [ ] Streamlit frontend
-- [ ] Mobile app
-
-
 ### 6. Fish Tracking (Video)
 ```bash
 python src/detection/track_fish.py --video "path/to/video.mp4"
 ```
-
-**Output:**
-Video : video.mp4
-FPS : 29
-Frames : 457
-
-Frame 30/457 — Fish in frame: 21 — Unique total: 47
-Frame 60/457 — Fish in frame: 18 — Unique total: 58
-...
-=============================================
-FISH TRACKING REPORT
-Total frames processed : 454
-Avg fish per frame : 21.1
-Max fish in one frame : 31
-Unique fish tracked : 368
-
-
-**How it works:**
-- YOLOv8 detects fish in every frame
-- ByteTrack assigns unique ID to each fish
-- Same fish keeps same ID across frames
-- Only new IDs counted → no double counting
+Uses **YOLOv8 + ByteTrack** to assign persistent IDs across frames and avoid double-counting.
 
 ### 7. GIS Mapping
 ```bash
@@ -238,190 +198,54 @@ python src/integrated_report.py \
   --pond_area 2000
 ```
 
----
-
-## Building a Frontend / UI
-
-### What data the backend returns
-
-**Fish Classification** (`src/classification/predict.py`):
-```json
-{
-  "predicted": "Catfish",
-  "confidence": 96.83,
-  "top5": [
-    {"species": "Catfish",       "confidence": 96.83},
-    {"species": "Mudfish",       "confidence": 1.36},
-    {"species": "Perch",         "confidence": 0.58},
-    {"species": "Silver Perch",  "confidence": 0.49},
-    {"species": "Freshwater Eel","confidence": 0.25}
-  ]
-}
-```
-
-**Fish Detection + Count** (`src/detection/count_fish.py`):
-```json
-{
-  "total_fish": 27,
-  "species_count": {
-    "Glass Perchlet": 9,
-    "Gold Fish": 4,
-    "Goby": 3,
-    "Unknown": 8
-  }
-}
-```
-
-**Density Estimation** (`src/detection/density.py`):
-```json
-{
-  "camera_area_m2": 12.0,
-  "areal_density": 2.25,
-  "estimated_total_fish": 4500,
-  "species_density": {
-    "Glass Perchlet": 0.75,
-    "Gold Fish": 0.33
-  }
-}
-```
-
-**Water Quality** (`water_quality/main.py`):
-```json
-{
-  "safe": true,
-  "potability": 1,
-  "predicted_ph": 7.59,
-  "message": "Safe to drink ✅"
-}
-```
-
----
-
-### How to expose as REST API
-
-Install FastAPI:
+### 9. Water Quality FastAPI Service
 ```bash
-pip install fastapi uvicorn python-multipart
-```
-
-Create `api.py` in project root:
-```python
-from fastapi import FastAPI, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
-import shutil, os, sys
-sys.path.append("src/detection")
-sys.path.append("src/classification")
-from count_fish import count_fish
-from density import estimate_density
-
-app = FastAPI(title="ML Fish Classifier API")
-
-app.add_middleware(CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"])
-
-@app.post("/detect")
-async def detect(file: UploadFile = File(...)):
-    # Save uploaded image
-    path = f"temp_{file.filename}"
-    with open(path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-    # Run detection
-    result = count_fish(path)
-    os.remove(path)
-    return result
-
-@app.post("/density")
-async def density(file: UploadFile = File(...),
-                  depth: float = 2.0,
-                  fov: float = 90.0,
-                  pond_area: float = 2000.0):
-    path = f"temp_{file.filename}"
-    with open(path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-    result = estimate_density(path, depth, fov, pond_area)
-    os.remove(path)
-    return result
-```
-
-Run API:
-```bash
-uvicorn api:app --reload
+uvicorn water_quality.main:app --reload
 # API docs at: http://localhost:8000/docs
 ```
 
----
-
-### How to call from frontend (JavaScript)
-
-**Single image:**
-```javascript
-const formData = new FormData();
-formData.append("file", imageFile);  // from <input type="file">
-
-const response = await fetch("http://localhost:8000/detect", {
-    method: "POST",
-    body: formData
-});
-const data = await response.json();
-console.log(data.total_fish);
-console.log(data.species_count);
-```
-
-**With density:**
-```javascript
-const response = await fetch(
-    "http://localhost:8000/density?depth=2&fov=90&pond_area=2000",
-    { method: "POST", body: formData }
-);
-```
-
----
-
-### Recommended Frontend Stack
-
-| Purpose | Tool |
-|---|---|
-| Quick demo UI | Streamlit |
-| Web app | React + Axios |
-| Mobile app | Flutter |
-| Dashboard | Grafana |
-
-**Streamlit (easiest — 30 lines):**
+### 10. Train from Scratch
 ```bash
-pip install streamlit
-```
-```python
-import streamlit as st
-import requests
+# Classification (EfficientNetB0)
+python src/classification/train.py
 
-st.title("🐟 Fish Classifier")
-
-uploaded = st.file_uploader("Upload fish image", 
-                             type=["jpg","png","jpeg"])
-if uploaded:
-    res = requests.post("http://localhost:8000/detect",
-                        files={"file": uploaded})
-    data = res.json()
-    st.write(f"Total fish: {data['total_fish']}")
-    st.bar_chart(data['species_count'])
-```
-Run:
-```bash
-streamlit run app.py
+# Detection (YOLOv8n)
+python src/detection/train_yolo.py
 ```
 
 ---
 
-### Input formats supported
+## Pipeline Flow
 
-| Input | Script | How to pass |
-|---|---|---|
-| Single image | `predict.py`, `count_fish.py`, `density.py` | `--image path/to/fish.jpg` |
-| Video file | `track_fish.py` | `--video path/to/video.mp4` |
-| Water params | `integrated_report.py` | `--turbidity 3.9 --hardness 196 --tds 500` |
-| GPS location | `gis_map.py` | `--lat 23.41 --lon 85.30 --location "Pond name"` |
-| Species data | `gis_map.py` | `--species_json '{"Catfish":9}'` |
+```text
+Input Image / Video
+   ↓
+YOLOv8n → Detect fish + draw boxes + count
+   ↓
+EfficientNetB0 → Crop each box + identify species
+   ↓
+Density Module → fish/m² + estimated pond population
+   ↓
+Heat Map / ByteTrack / Folium GIS Map
+   ↓
+XGBoost → Water potability + pH prediction
+   ↓
+Streamlit Web App (localhost:8501)
+```
 
 ---
+
+## Roadmap
+- [x] Species classification (73 species)
+- [x] Fish detection (YOLOv8)
+- [x] Species identification per detection
+- [x] Unknown species handling
+- [x] Density estimation
+- [x] Spatial heat map
+- [x] Fish tracking (ByteTrack)
+- [x] Water quality integration (XGBoost + FastAPI)
+- [x] Integrated report
+- [x] GIS mapping (Folium)
+- [x] Streamlit frontend (`app.py`)
+- [x] Cross-platform support (macOS MPS / CUDA / CPU)
+- [ ] Mobile app
