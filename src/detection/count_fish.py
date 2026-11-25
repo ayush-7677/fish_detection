@@ -15,16 +15,18 @@ from torchvision import transforms
 from ultralytics import YOLO
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'classification'))
+CURRENT_DIR  = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
+sys.path.append(os.path.join(CURRENT_DIR, '..', 'classification'))
 from model import build_model  # noqa: E402
 from collections import Counter
 
 # ── Configuration ─────────────────────────────────────────────
-YOLO_MODEL    = r"C:\Users\ravib\ML_Fish_Classifier\models\yolo_fish\weights\best.pt"
-EFFNET_MODEL  = r"C:\Users\ravib\ML_Fish_Classifier\models\best_model.pth"
-CLASSES_PATH  = r"C:\Users\ravib\ML_Fish_Classifier\models\class_names.json"
-OUTPUT_DIR    = r"C:\Users\ravib\ML_Fish_Classifier\models\combined"
-DEVICE        = torch.device("cuda:0")
+YOLO_MODEL    = os.path.join(PROJECT_ROOT, "models", "yolo_fish", "weights", "best.pt")
+EFFNET_MODEL  = os.path.join(PROJECT_ROOT, "models", "best_model.pth")
+CLASSES_PATH  = os.path.join(PROJECT_ROOT, "models", "class_names.json")
+OUTPUT_DIR    = os.path.join(PROJECT_ROOT, "models", "combined")
+DEVICE        = torch.device("cuda:0" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 CONF          = 0.25   # YOLOv8 confidence threshold
 
 # ── EfficientNet transform ────────────────────────────────────
@@ -37,13 +39,20 @@ effnet_transform = transforms.Compose([
     )
 ])
 
-def load_effnet(num_classes):
+def load_effnet(class_names):
     """Load EfficientNet species classifier."""
-    model = build_model(num_classes=num_classes)
-    model.load_state_dict(torch.load(EFFNET_MODEL, map_location=DEVICE))
+    state_dict = torch.load(EFFNET_MODEL, map_location=DEVICE)
+    ckpt_classes = state_dict["classifier.1.weight"].shape[0]
+    if ckpt_classes != len(class_names):
+        alt_path = os.path.join(PROJECT_ROOT, "models", f"class_names_{ckpt_classes}.json")
+        if os.path.exists(alt_path):
+            with open(alt_path) as f:
+                class_names = json.load(f)
+    model = build_model(num_classes=ckpt_classes)
+    model.load_state_dict(state_dict)
     model = model.to(DEVICE)
     model.eval()
-    return model
+    return model, class_names
 
 def identify_species(crop, effnet_model, class_names):
     """
@@ -89,7 +98,7 @@ def count_fish(image_path):
 
     # ── Load models ───────────────────────────────────────────
     yolo_model   = YOLO(YOLO_MODEL)
-    effnet_model = load_effnet(num_classes=len(class_names))
+    effnet_model, class_names = load_effnet(class_names)
 
     # ── Step 1: YOLOv8 detection ──────────────────────────────
     print(f"\nProcessing: {image_path}")

@@ -1,18 +1,21 @@
 import joblib
 import numpy as np
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from xgboost import XGBClassifier, XGBRegressor
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # ── Load Models ───────────────────────────────────────────────────────────
 clf = XGBClassifier()
-clf.load_model('model_clf.json')
+clf.load_model(os.path.join(BASE_DIR, 'model_clf.json'))
 reg = XGBRegressor()
-reg.load_model('model_reg.json')
-scaler_clf  = joblib.load('scaler_clf.pkl')
-scaler_reg  = joblib.load('scaler_reg.pkl')
-imputer     = joblib.load('imputer.pkl')
+reg.load_model(os.path.join(BASE_DIR, 'model_reg.json'))
+scaler_clf  = joblib.load(os.path.join(BASE_DIR, 'scaler_clf.pkl'))
+scaler_reg  = joblib.load(os.path.join(BASE_DIR, 'scaler_reg.pkl'))
+imputer     = joblib.load(os.path.join(BASE_DIR, 'imputer.pkl'))
 
 # ── App Setup ─────────────────────────────────────────────────────────────
 app = FastAPI(title="Aqua-Epoch Water Quality API")

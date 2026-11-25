@@ -21,21 +21,24 @@ from torchvision import transforms
 from ultralytics import YOLO
 from collections import Counter
 
+CURRENT_DIR       = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT      = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+
 # Add classification to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'classification'))
+sys.path.append(os.path.join(CURRENT_DIR, 'classification'))
 from model import build_model
 
 # Add water quality models path
-WATER_QUALITY_DIR = r"C:\Users\ravib\ML_Fish_Classifier\water_quality"
+WATER_QUALITY_DIR = os.path.join(PROJECT_ROOT, "water_quality")
 sys.path.append(WATER_QUALITY_DIR)
 
 from xgboost import XGBClassifier, XGBRegressor
 
 # ── Configuration ─────────────────────────────────────────────
-YOLO_MODEL   = r"C:\Users\ravib\ML_Fish_Classifier\models\yolo_fish\weights\best.pt"
-EFFNET_MODEL = r"C:\Users\ravib\ML_Fish_Classifier\models\best_model.pth"
-CLASSES_PATH = r"C:\Users\ravib\ML_Fish_Classifier\models\class_names.json"
-DEVICE       = torch.device("cuda:0")
+YOLO_MODEL   = os.path.join(PROJECT_ROOT, "models", "yolo_fish", "weights", "best.pt")
+EFFNET_MODEL = os.path.join(PROJECT_ROOT, "models", "best_model.pth")
+CLASSES_PATH = os.path.join(PROJECT_ROOT, "models", "class_names.json")
+DEVICE       = torch.device("cuda:0" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 CONF         = 0.25
 
 # Water quality model paths
@@ -66,8 +69,15 @@ def load_fish_models():
     yolo = YOLO(YOLO_MODEL)
     with open(CLASSES_PATH) as f:
         class_names = json.load(f)
-    effnet = build_model(num_classes=len(class_names))
-    effnet.load_state_dict(torch.load(EFFNET_MODEL, map_location=DEVICE))
+    state_dict = torch.load(EFFNET_MODEL, map_location=DEVICE)
+    ckpt_classes = state_dict["classifier.1.weight"].shape[0]
+    if ckpt_classes != len(class_names):
+        alt_path = os.path.join(PROJECT_ROOT, "models", f"class_names_{ckpt_classes}.json")
+        if os.path.exists(alt_path):
+            with open(alt_path) as f:
+                class_names = json.load(f)
+    effnet = build_model(num_classes=ckpt_classes)
+    effnet.load_state_dict(state_dict)
     effnet = effnet.to(DEVICE)
     effnet.eval()
     return yolo, effnet, class_names

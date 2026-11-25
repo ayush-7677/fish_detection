@@ -16,9 +16,11 @@ import os
 from ultralytics import YOLO
 from collections import defaultdict
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
 # ── Configuration ─────────────────────────────────────────────
-YOLO_MODEL = r"C:\Users\ravib\ML_Fish_Classifier\models\yolo_fish\weights\best.pt"
-OUTPUT_DIR = r"C:\Users\ravib\ML_Fish_Classifier\models\tracking"
+YOLO_MODEL = os.path.join(PROJECT_ROOT, "models", "yolo_fish", "weights", "best.pt")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "models", "tracking")
 CONF       = 0.25
 
 def track_fish(video_path):
@@ -101,7 +103,7 @@ def track_fish(video_path):
                 # Assign color per ID (consistent across frames)
                 if fish_id not in id_colors:
                     import random
-                    random.seed(fish_id)
+                    random.seed(int(fish_id))
                     id_colors[fish_id] = (
                         random.randint(50, 255),
                         random.randint(50, 255),

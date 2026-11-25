@@ -12,32 +12,30 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
-def build_model(num_classes=31):
+def build_model(num_classes=31, pretrained=False):
     """
-    Loads pretrained EfficientNetB0 and adapts it for fish classification.
+    Loads EfficientNetB0 and adapts it for fish classification.
     
     Args:
         num_classes: number of fish species (31 in our case)
+        pretrained: whether to download ImageNet weights (True for training from scratch, False for inference/checkpoints)
     
     Returns:
-        model ready for training
+        model ready for training or inference
     """
 
-    # Step 1: Load EfficientNetB0 pretrained on ImageNet
-    # First run will download ~20MB weights automatically
-    model = models.efficientnet_b0(weights="IMAGENET1K_V1")
+    # Step 1: Load EfficientNetB0 (pretrained on ImageNet if training from scratch)
+    weights = "IMAGENET1K_V1" if pretrained else None
+    model = models.efficientnet_b0(weights=weights)
 
-    # Step 2: Freeze all layers
-    # These layers already know edges, textures, shapes — don't retrain them
-    for param in model.parameters():
-        param.requires_grad = False
+    # Step 2: Freeze backbone layers if training transfer learning
+    if pretrained:
+        for param in model.parameters():
+            param.requires_grad = False
 
     # Step 3: Replace the classifier (last layer)
-    # Original: 1000 ImageNet classes
-    # Ours    : 31 fish species
     in_features = model.classifier[1].in_features  # 1280
     model.classifier[1] = nn.Linear(in_features, num_classes)
-    # Only this new layer will train
 
     return model
 

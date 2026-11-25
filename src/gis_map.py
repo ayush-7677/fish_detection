@@ -23,8 +23,10 @@ import argparse
 import os
 import sys
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
 # ── Configuration ─────────────────────────────────────────────
-OUTPUT_DIR = r"C:\Users\ravib\ML_Fish_Classifier\models\gis"
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "models", "gis")
 
 # ── Species colors for map markers ────────────────────────────
 SPECIES_COLORS = {

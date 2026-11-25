@@ -11,10 +11,13 @@
 
 from ultralytics import YOLO
 import cv2
+import os
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # ── Configuration ─────────────────────────────────────────────
-MODEL_PATH  = r"C:\Users\ravib\ML_Fish_Classifier\models\yolo_fish\weights\best.pt"
-OUTPUT_DIR  = r"C:\Users\ravib\ML_Fish_Classifier\models\yolo_fish"
+MODEL_PATH  = os.path.join(PROJECT_ROOT, "models", "yolo_fish", "weights", "best.pt")
+OUTPUT_DIR  = os.path.join(PROJECT_ROOT, "models", "yolo_fish")
 CONF        = 0.25   # confidence threshold (0-1)
                      # lower = detect more fish (may include false positives)
                      # higher = only confident detections

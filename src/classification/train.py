@@ -17,11 +17,14 @@ import json
 from dataset import get_dataloaders
 from model import build_model
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
+
 # ── Configuration ─────────────────────────────────────────────
 EPOCHS     = 20        # number of training cycles
 LR         = 0.001     # learning rate
-MODEL_DIR  = r"C:\Users\ravib\ML_Fish_Classifier\models"
-DEVICE     = torch.device("cuda:0")  # RTX 5050
+MODEL_DIR  = os.path.join(PROJECT_ROOT, "models")
+DEVICE     = torch.device("cuda:0" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
 def train():
 
@@ -30,7 +33,7 @@ def train():
     num_classes = len(class_names)
 
     # ── Build model ────────────────────────────────────────────
-    model = build_model(num_classes=num_classes)
+    model = build_model(num_classes=num_classes, pretrained=True)
     model = model.to(DEVICE)  # move model to GPU
 
     # ── Loss & Optimizer ───────────────────────────────────────

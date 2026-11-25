@@ -16,9 +16,11 @@ import argparse
 import os
 from ultralytics import YOLO
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
 # ── Configuration ─────────────────────────────────────────────
-YOLO_MODEL = r"C:\Users\ravib\ML_Fish_Classifier\models\yolo_fish\weights\best.pt"
-OUTPUT_DIR = r"C:\Users\ravib\ML_Fish_Classifier\models\heatmap"
+YOLO_MODEL = os.path.join(PROJECT_ROOT, "models", "yolo_fish", "weights", "best.pt")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "models", "heatmap")
 CONF       = 0.25
 
 def generate_heatmap(image_path):
